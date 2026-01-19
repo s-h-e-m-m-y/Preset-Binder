@@ -1,0 +1,17 @@
+#pragma once
+#define WIN32_LEAN_AND_MEAN
+#define _CRT_SECURE_NO_WARNINGS
+#include <Windows.h>
+#include <string>
+#include <vector>
+#include <functional>
+#include <memory>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
+#include <map>
+#include "bakkesmod/plugin/bakkesmodplugin.h"
+#include "bakkesmod/plugin/pluginwindow.h"
+#include "bakkesmod/plugin/PluginSettingsWindow.h"
+#include "IMGUI/imgui.h"
+#include "IMGUI/imgui_stdlib.h"
