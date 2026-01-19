@@ -17,7 +17,6 @@ public:
 private:
     std::map<int, std::string> presetBindings;
     int equippedPresetIndex = -1;
-    int maxPresets = 50;
 
     char codeInputBuffer[512] = "";
     bool pluginEnabled = true;
