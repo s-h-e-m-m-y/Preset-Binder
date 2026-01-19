@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "Preset Binder.h"
 #include <fstream>
 #include <sstream>
@@ -51,7 +51,7 @@ void PresetBinder::onLoad()
         catch (...) {}
         }, "Apply BakkesMod preset for a specific slot", PERMISSION_ALL);
 
-    // Hook preset equip event - SAFE VERSION
+    // Hook preset equip event
     cvarManager->log("Hooking preset change event...");
 
     gameWrapper->HookEventWithCallerPost<ActorWrapper>(
@@ -66,9 +66,6 @@ void PresetBinder::onLoad()
 
             auto* presetParams = reinterpret_cast<EquipPresetParams*>(params);
             int presetIndex = presetParams->Index;
-
-            // Validate index
-            if (presetIndex < 0 || presetIndex >= maxPresets) return;
 
             equippedPresetIndex = presetIndex;
 
@@ -106,109 +103,122 @@ void PresetBinder::RenderSettings()
     ImGui::Separator();
     ImGui::Spacing();
 
-    // Preset list
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "Garage Presets");
-    ImGui::Text("Expand a preset to add or manage its binding");
+    // Show existing bindings first
+    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "Your Bindings");
+    ImGui::Text("Manage your preset bindings below");
     ImGui::Spacing();
 
-    ImGui::BeginChild("PresetsList", ImVec2(0, 400), true);
+    if (presetBindings.empty()) {
+        ImGui::TextDisabled("No bindings yet. Add one below!");
+    }
+    else {
+        ImGui::BeginChild("BindingsList", ImVec2(0, 200), true);
 
-    for (int i = 0; i < maxPresets; i++) {
-        ImGui::PushID(i);
+        std::vector<int> toRemove;
 
-        bool hasBinding = (presetBindings.find(i) != presetBindings.end());
+        for (auto& [slot, code] : presetBindings) {
+            ImGui::PushID(slot);
 
-        // Highlight equipped preset in green
-        if (i == equippedPresetIndex) {
-            ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.1f, 0.6f, 0.1f, 0.8f));
-            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.1f, 0.7f, 0.1f, 0.9f));
-            ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.1f, 0.8f, 0.1f, 1.0f));
-        }
-        // Highlight presets with bindings in blue
-        else if (hasBinding) {
-            ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.1f, 0.4f, 0.7f, 0.6f));
-            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.1f, 0.5f, 0.8f, 0.7f));
-            ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.1f, 0.6f, 0.9f, 0.8f));
-        }
+            // Highlight equipped preset in green
+            if (slot == equippedPresetIndex) {
+                ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.1f, 0.6f, 0.1f, 0.8f));
+                ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.1f, 0.7f, 0.1f, 0.9f));
+                ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.1f, 0.8f, 0.1f, 1.0f));
+            }
+            else {
+                ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.1f, 0.4f, 0.7f, 0.6f));
+                ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.1f, 0.5f, 0.8f, 0.7f));
+                ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.1f, 0.6f, 0.9f, 0.8f));
+            }
 
-        // Preset header
-        std::string headerText = "Preset " + std::to_string(i + 1);
-        if (i == equippedPresetIndex) {
-            headerText += " (Equipped)";
-        }
-        if (hasBinding) {
-            headerText += " [Bound]";
-        }
+            // Display as 1-indexed for user (slot 0 = "Preset 1")
+            std::string headerText = "Preset " + std::to_string(slot + 1);
+            if (slot == equippedPresetIndex) {
+                headerText += " (Equipped)";
+            }
 
-        bool isOpen = ImGui::CollapsingHeader(headerText.c_str());
-
-        if (i == equippedPresetIndex || hasBinding) {
+            bool isOpen = ImGui::CollapsingHeader(headerText.c_str());
             ImGui::PopStyleColor(3);
-        }
 
-        if (isOpen) {
-            ImGui::Indent();
+            if (isOpen) {
+                ImGui::Indent();
 
-            auto it = presetBindings.find(i);
-
-            if (hasBinding) {
-                // Show existing binding
                 ImGui::Text("BakkesMod Code:");
                 ImGui::SameLine();
 
-                std::string displayCode = it->second.length() > 40
-                    ? it->second.substr(0, 37) + "..."
-                    : it->second;
+                std::string displayCode = code.length() > 40
+                    ? code.substr(0, 37) + "..."
+                    : code;
                 ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), "%s", displayCode.c_str());
 
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("%s", it->second.c_str());
+                    ImGui::SetTooltip("%s", code.c_str());
                 }
 
                 ImGui::Spacing();
 
-                // Test and remove buttons
                 if (ImGui::Button("Test")) {
-                    ApplyBakkesModPreset(it->second);
+                    ApplyBakkesModPreset(code);
                 }
                 ImGui::SameLine();
 
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
-                if (ImGui::Button("Remove Binding")) {
-                    presetBindings.erase(i);
-                    SaveBindingsToConfig();
+                if (ImGui::Button("Remove")) {
+                    toRemove.push_back(slot);
                 }
                 ImGui::PopStyleColor(2);
-            }
-            else {
-                // Add new binding
-                ImGui::Text("Paste your BakkesMod code here:");
-                ImGui::SetNextItemWidth(-1);
-                std::string inputId = "##code" + std::to_string(i);
-                ImGui::InputText(inputId.c_str(), codeInputBuffer, sizeof(codeInputBuffer));
 
+                ImGui::Unindent();
                 ImGui::Spacing();
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.7f, 0.2f, 1.0f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.8f, 0.3f, 1.0f));
-                if (ImGui::Button("Add Binding")) {
-                    if (strlen(codeInputBuffer) > 0) {
-                        presetBindings[i] = std::string(codeInputBuffer);
-                        SaveBindingsToConfig();
-                        codeInputBuffer[0] = '\0';
-                    }
-                }
-                ImGui::PopStyleColor(2);
             }
 
-            ImGui::Unindent();
-            ImGui::Spacing();
+            ImGui::PopID();
         }
 
-        ImGui::PopID();
+        for (int slot : toRemove) {
+            presetBindings.erase(slot);
+        }
+        if (!toRemove.empty()) {
+            SaveBindingsToConfig();
+        }
+
+        ImGui::EndChild();
     }
 
-    ImGui::EndChild();
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // Add new binding section
+    ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.4f, 1.0f), "Add New Binding");
+    ImGui::Spacing();
+
+    static int newPresetSlot = 1;  // Start at 1 for user display
+    ImGui::Text("Preset Number (1-50):");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(100);
+    ImGui::InputInt("##newslot", &newPresetSlot);
+
+    if (newPresetSlot < 1) newPresetSlot = 1;
+    if (newPresetSlot > 50) newPresetSlot = 50;
+
+    ImGui::Text("BakkesMod Code:");
+    ImGui::SetNextItemWidth(400);
+    ImGui::InputText("##newcode", codeInputBuffer, sizeof(codeInputBuffer));
+
+    ImGui::Spacing();
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.7f, 0.2f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.8f, 0.3f, 1.0f));
+    if (ImGui::Button("Add Binding", ImVec2(150, 0))) {
+        if (strlen(codeInputBuffer) > 0) {
+            // Convert from 1-indexed (user) to 0-indexed (internal)
+            presetBindings[newPresetSlot - 1] = std::string(codeInputBuffer);
+            SaveBindingsToConfig();
+            codeInputBuffer[0] = '\0';
+        }
+    }
+    ImGui::PopStyleColor(2);
 
     ImGui::Spacing();
     ImGui::Separator();
@@ -231,19 +241,20 @@ void PresetBinder::RenderSettings()
             "How to use:\n"
             "1. Create a custom preset in BakkesMod's Item Mod menu\n"
             "2. Copy the preset code\n"
-            "3. Expand the garage preset number you want to bind\n"
+            "3. Enter the preset number (1-50) matching your garage preset\n"
             "4. Paste the code and click 'Add Binding'\n"
             "5. When you switch to that garage preset, the Item Mod will auto-apply!\n\n"
-            "Colours:\n"
+            "Preset numbers are tied to order of creation for each preset.\n\n"
+            "DISCLAIMER: The 'Test' button was used for me during development - will likely freeze/crash your game.\n\n"
+            "Colors:\n"
             "Green = Currently equipped preset\n"
-            "Blue = Preset with a binding\n\n"
-            "Tip: You can also use console commands like 'pb_apply_1' to manually apply bindings."
+            "Blue = Preset with a binding"
         );
         ImGui::Unindent();
     }
 
     ImGui::Spacing();
-    ImGui::TextDisabled("Preset Binder v1.0 - made by shemmy.");
+    ImGui::TextDisabled("Preset Binder v1.0.1 - made by shemmy.");
 }
 
 void PresetBinder::LoadBindingsFromConfig()
