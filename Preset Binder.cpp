@@ -143,31 +143,72 @@ void PresetBinder::RenderSettings()
             if (isOpen) {
                 ImGui::Indent();
 
-                ImGui::Text("BakkesMod Code:");
-                ImGui::SameLine();
+                // Check if we're editing this slot
+                bool isEditing = (editingSlot == slot);
 
-                std::string displayCode = code.length() > 40
-                    ? code.substr(0, 37) + "..."
-                    : code;
-                ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), "%s", displayCode.c_str());
+                if (isEditing) {
+                    // Edit mode
+                    ImGui::Text("Edit BakkesMod Code:");
+                    ImGui::SetNextItemWidth(-100);
+                    ImGui::InputText("##editcode", editCodeBuffer, sizeof(editCodeBuffer));
 
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("%s", code.c_str());
+                    ImGui::Spacing();
+
+                    // Save and Cancel buttons
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.7f, 0.2f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.8f, 0.3f, 1.0f));
+                    if (ImGui::Button("Save")) {
+                        if (strlen(editCodeBuffer) > 0) {
+                            code = std::string(editCodeBuffer);
+                            SaveBindingsToConfig();
+                        }
+                        editingSlot = -1;
+                    }
+                    ImGui::PopStyleColor(2);
+
+                    ImGui::SameLine();
+                    if (ImGui::Button("Cancel")) {
+                        editingSlot = -1;
+                    }
                 }
+                else {
+                    // View mode
+                    ImGui::Text("BakkesMod Code:");
+                    ImGui::SameLine();
 
-                ImGui::Spacing();
+                    std::string displayCode = code.length() > 40
+                        ? code.substr(0, 37) + "..."
+                        : code;
+                    ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), "%s", displayCode.c_str());
 
-                if (ImGui::Button("Test")) {
-                    ApplyBakkesModPreset(code);
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("%s", code.c_str());
+                    }
+
+                    ImGui::Spacing();
+
+                    // Edit and Remove buttons
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.3f, 0.5f, 0.8f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 0.6f, 0.9f, 1.0f));
+                    if (ImGui::Button("Edit")) {
+                        editingSlot = slot;
+                        strncpy(editCodeBuffer, code.c_str(), sizeof(editCodeBuffer) - 1);
+                        editCodeBuffer[sizeof(editCodeBuffer) - 1] = '\0';
+                    }
+                    ImGui::PopStyleColor(2);
+
+                    ImGui::SameLine();
+
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
+                    if (ImGui::Button("Remove")) {
+                        toRemove.push_back(slot);
+                        if (editingSlot == slot) {
+                            editingSlot = -1;
+                        }
+                    }
+                    ImGui::PopStyleColor(2);
                 }
-                ImGui::SameLine();
-
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
-                if (ImGui::Button("Remove")) {
-                    toRemove.push_back(slot);
-                }
-                ImGui::PopStyleColor(2);
 
                 ImGui::Unindent();
                 ImGui::Spacing();
@@ -244,17 +285,12 @@ void PresetBinder::RenderSettings()
             "3. Enter the preset number (1-50) matching your garage preset\n"
             "4. Paste the code and click 'Add Binding'\n"
             "5. When you switch to that garage preset, the Item Mod will auto-apply!\n\n"
-            "Preset numbers are tied to order of creation for each preset.\n\n"
-            "DISCLAIMER: The 'Test' button was used for me during development - will likely freeze/crash your game.\n\n"
-            "Colors:\n"
-            "Green = Currently equipped preset\n"
-            "Blue = Preset with a binding"
         );
         ImGui::Unindent();
     }
 
     ImGui::Spacing();
-    ImGui::TextDisabled("Preset Binder v1.0.1 - made by shemmy.");
+    ImGui::TextDisabled("Preset Binder v1.1.0 - made by shemmy.");
 }
 
 void PresetBinder::LoadBindingsFromConfig()
