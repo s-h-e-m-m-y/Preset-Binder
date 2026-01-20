@@ -11,3 +11,5 @@ For each preset slot there can exist, there will be a drop down bar where you ca
 v1.0.0 - Release
 
 v1.0.1 - Fixed bug where all 50 preset slots show up on list even if you do not have 50 presets.
+
+v1.1.0 - Removed 'Test' button and added 'Edit' for every binding.
