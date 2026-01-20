@@ -17,8 +17,10 @@ public:
 private:
     std::map<int, std::string> presetBindings;
     int equippedPresetIndex = -1;
+    int editingSlot = -1;
 
     char codeInputBuffer[512] = "";
+    char editCodeBuffer[512] = "";
     bool pluginEnabled = true;
 
     void LoadBindingsFromConfig();
